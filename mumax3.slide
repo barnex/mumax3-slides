@@ -1,0 +1,385 @@
+mumax3
+GPU-accelerated micromagnetism
+12:00 22 Dec 2014
+
+Arne Vansteenkiste
+Ghent University
+Arne.Vansteenkiste@Ugent.be
+http://mumax.github.io
+
+
+* Introduction
+
+
+Finite-difference micromagnetism
+
+- Similar: OOMMF, MagNum
+- Different: nMag, MagPar
+
+* Compute nodes
+
+Standard diskless setup
+
+- PXE boot over broadcomm (!) adapter
+- CentOS 6 with custom kernel (broadcomm driver)
+- DHCP client
+- NFS client to ragnarok, monster1, monster2
+- single 1Gbit/s ethernet interface
+
+
+* Compute nodes
+
+NFS configuration
+
+192.168.0.* address
+/etc/fstab SYNC, ...
+mumax UID GID
+firewall
+
+
+* Ragnarok
+
+- DHCP server: maintain MAC address - IP address mapping
+- CentOS 6
+- PXE server: maintain 12 OS images
+- NFS server to nodes (for PXE boot)
+- 2x1Gbit/s bonded interface
+
+High trafic, Single point of failure
+
+
+* Monster1
+
+- NFS server to nodes, dynamag
+- 2x1Gbit/s bonded interface
+- RAID-Z ZFS filesystem
+
+* Monster1
+
+UID/GID mapping
+firewall
+interface config
+
+
+* Monster2
+
+Similar
+
+
+* Dynamag
+
+- NFS client to monster1, monster2
+- 1x1Gbit/s to 192.168.*.* subnet
+- 1x100MB/s to internet
+- UID/GID mapping
+- CentOS 6
+- ext4 filesystem
+- ssh host
+- nginx webserver
+- status reporting
+
+
+* mumax3-daemon
+
+* mumax3-daemon
+
+- hosted on monster1:/home/mumax/bin
+- accessed by nodes over NFS
+- started on nodes over ssh by script
+- 1 instance per GPU (!)
+
+* mumax3-daemon
+
+- scans monster1, monster2 queue directories (1-2 min latency)
+- parses JSON job files
+- output JSON status files
+- tracks FairShare per queue directory
+- NFS for job locking
+
+
+* mumax3-daemon FairShare
+
+For each GPU:
+
+- each queue directory starts with small, random FairShare
+- queue with smallest FairShare starts random job
+- FairShare += job runtime
+- d FairShare / d t = FairShare / (2 days)
+- FairShare not persistently stored
+- Occasional race condition massively delays entire batch
+
+* mumax3-daemon FairShare
+
+- on boot: random users start, large variance (1 instance/GPU)
+- random job largely sidesteps NFS locking latency
+- on high load: round-robin scheduling
+- on low load: newest user gets 100% time
+- long walltime = problematic job
+
+
+* mumax3-submit
+
+* mumax3-submit
+
+- run on NFS/SSHFS client to monster1, monster2
+- recursively looks for file .here_be_your_mumax_files8d119d43956ea73d9d3d3d7cf5fe8efb
+- writes JSON job file with path translation (!)
+- removes previous output/status files
+
+Then you wait for several minutes and check status
+
+* queue status
+
+- runs on dynamag
+- scans monster1 for JSON status files
+- generates static HTML
+- served over NGINX
+- ~10s of seconds latency
+
+
+* Issues
+
+Frequent power failures
+
+- file system consistency (ZFS!)
+- stale NFS handles
+- routing issues
+- job resubmission
+
+New machines
+
+- UID/GID mapping
+- DHCP
+- PXE images
+- ethernet links
+- /etc/fstab
+
+
+* Issues
+
+Maintaining
+
+- 12 PXE images
+
+NFS
+
+- latency (~10s seconds)
+- access control
+- GID/UID mapping
+- firewall configuration
+- mount flags (SYNC, NOATIME, ...)
+- SYNC/ASYNC = fast or correct, pick one
+
+
+* Issues
+
+mumax3-daemon
+
+- node health?
+- resubmit failed jobs
+- see occupancy
+- huge latency
+- long jobs stall others
+- no GUI
+
+* Overall performance
+
+- Typical Linux HPC setup
+- Compares favorable to UGent HPC
+- Power failure recuperations typ 2x faster than UGent HPC
+- Maintenance windows typ. 2-3x shorter than UGent HPC
+- mumax3-daemon more suited than torque/PBS queue
+
+
+Compare to UGent:
+
+- Yesterday: UGent HPC emergency maintainance
+- 4 days ago: UGent HPC large storage issues
+- 5 days ago: UGent HPC login issues
+- ...
+
+
+* mumax3-server
+
+* mumax3-server
+
+An effort to improve
+
+- maintenance cost
+- ease-of-use
+- latency (for humans)
+
+* mumax3-server
+
+Components
+
+- HTTPFS
+- RPC (over HTTP)
+- Port scanner
+- Queue manager
+- Compute service
+- FairShare
+- Watchdog
+
+* mumax3 HTTPFS
+
+A file system abstraction, in userspace software, over HTTP
+
+- in mumax3.6
+- in mumax3-server
+
+Only strictly needed FS calls implemented, + HTTP "GET"
+
+	"GET"
+	"OPEN"      
+	"READ"      
+	"WRITE"     
+	"CLOSE"     
+	"MKDIR"     
+	"READDIR"   
+	"DELETE"    
+	"REMOVEALL" 
+
+~ 1000 lines Go (including 300 lines test code)
+
+- Also used internally for mumax3.6's local FS access.
+- Low-latency, even over high-latency (~50ms) network.
+
+
+
+
+* mumax3 HTTPFS
+
+Also GET method:
+
+	$ curl http://elflord:35360/fs/arne/standardproblem4.mx3
+	/*
+		Micromagnetic standard problem 4 (a) according to
+		http://www.ctcms.nist.gov/~rdm/mumag.org.html
+	*/
+	
+	// geometry
+		setgridsize(128, 32, 1)
+		setcellsize(500e-9/128, 125e-9/32, 3e-9)
+	
+	// material
+		Msat  = 800e3
+		Aex   = 13e-12
+		alpha = 0.02
+		m  = uniform(1, .1, 0)
+	...
+
+
+
+* mumax3 HTTPFS
+
+Other human-accessible methods:
+
+- http://host/ls/file
+- http://host/rm/file
+- http://host/get/file
+- http://host/put/file
+- http://host/append/file
+
+
+
+* mumax3-server Status Service
+
+Served at http://host:35360/
+
+Notice: firefox incorrectly handles Cache-Control headers
+
+*demonstration*
+
+
+* mumax3-server RPC
+
+- custom HTTP + JSON RPC
+- served at http://host/do
+- call: HTTP GET /do/method/arg1/arg2
+- JSON-encoded return value
+
+Generally accessible. E.g.:
+
+	$ curl http://elflord:35360/do/GiveJob/\"mymachine:30000\"
+	"http://elflord:35360/fs/arne/regression001.mx3"
+
+* mumax3-server portscan service
+
+Auto network configuration
+
+- scan network for peers:
+- 2s TCP timeout (!)
+- 128 parallel scanners
+- max 1024 addresses
+
+	Usage of mumax3-server:
+	  -cache="": mumax3 kernel cache path
+	  -exec="mumax3": mumax3 executable
+	  -l=":35360": Listen and serve at this network address
+	  -ports="35360-35361": Scan these ports for other servers
+	  -root=".": httpfs root directory
+	  -scan="127.0.0-1.1,192.168.0.1-253": Scan these IP address for other servers
+	  -timeout=2s: Portscan timeout
+
+
+* mumax3-server Compute Service
+
+Autoconfiguration:
+
+- automatically look for mumax3 executable
+- automatically detects GPUs
+- automatically run compute service if possible
+
+Scheduling
+
+- default: equal share for all queue servers
+- ask queue servers for job
+- queue server decides on user
+
+
+
+* mumax3-server Queue Service
+
+- job store in HTTPFS root
+- user = top-level directory in httpfs ROOT
+- layout: httpfs_root/user/inputfiles
+
+* mumax3-server Scaling
+
+Scaling behaviour
+
+- Users: O(N)
+- Compute Nodes: O(N)
+- Total GPUs: O(1)
+- Jobs/User: O(1) amortized
+- Storage nodes: O(N)
+- Status: O(N_jobs)
+
+dozens of users, nodes / virtually unlimited jobs/user / slower status page with many jobs
+
+
+
+
+Watchdog
+
+- Re-schedules dead jobs so you don't have to.
+- Typ ~1min latency.
+- Batch latency massively reduced
+
+
+
+Latency
+
+- normal mode: ~1s
+- failover mode: ~1min
+
+
+
+
+Web interface
+
+Demonstration
+
+
+
