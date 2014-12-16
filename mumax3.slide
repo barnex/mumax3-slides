@@ -16,6 +16,7 @@ http://mumax.github.io
 - GPU-acceleration: ~100x speed-up
 - Open-source, GPLv3
 - Clean Go+CUDA codebase
+- Script, Web and Go interface
 
 * Discretization
 
@@ -28,3 +29,13 @@ Finite-differences
 
 .image csg.jpg
 [ complex shape defined with CSG ]
+
+
+* Regions
+
+- Space- and time-dependent material parameters.
+- Defined in up to 256 material regions
+- Regions are CSG-defined
+
+.image regions.png
+[ Regions defined like grains ]
