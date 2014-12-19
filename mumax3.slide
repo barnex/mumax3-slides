@@ -14,6 +14,7 @@ http://mumax.github.io
 - Finite-difference micromagnetism
 - Similar: OOMMF, microMagnum
 - GPU-acceleration: ~100x speed-up
+- Low memory use
 - Open-source, GPLv3
 - Clean Go+CUDA codebase
 - Script, Web and Go interface
@@ -39,3 +40,29 @@ Finite-differences
 
 .image regions.png
 [ Regions defined like grains ]
+
+
+* Physics
+
+- Landau-Lifshitz equation
+- Magnetostatic field
+- Exchange interaction
+- Interface Dzyaloshinskii-Moriya
+- Bulk Dzyaloshinskii-Moriya [experimental] 
+- Uni-axial anisotropy (2nd order)
+- Cubic anisotropy (3rd order)
+- Thermal fluctuations (Brown)
+- Slonczewski Spin-transfer torque
+
+All (except Bulk DM) rigorously tested against 100 known cases.
+
+
+* ODE Solvers
+
+- RK1 (Euler)
+- RK12 (Heun)
+- RK23 (Bogaki-Shampine)
+- RK4 (Classical Runge-Kutta)
+- RK45 (Dormand-Prince)
+
+[ Only need to pick one for finite temperature ]
