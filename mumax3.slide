@@ -19,6 +19,24 @@ http://mumax.github.io
 - Clean Go+CUDA codebase
 - Script, Web and Go interface
 
+
+* Getting MuMax
+
+Requirements
+
+- Linux, Windows or MacOSX
+- NVIDIA GPU
+- NVIDIA Driver
+
+Get binaries
+
+- mumax.github.io
+- binaries for Linux, Windows
+- GPLv3 license
+
+or build from source
+
+
 * Discretization
 
 Finite-differences
@@ -40,6 +58,21 @@ Finite-differences
 
 .image regions.png
 [ Regions defined like grains ]
+
+
+* Script interface
+
+- Simple but powerfull Go-like script built-in.
+- Statically checked before execution
+- See mumax.github.io/api
+
+
+* Script interface
+
+FMR example
+
+.code script.mx3
+
 
 
 * Physics
@@ -66,3 +99,22 @@ All (except Bulk DM) rigorously tested against 100 known cases.
 - RK45 (Dormand-Prince)
 
 [ Only need to pick one for finite temperature ]
+
+
+* Demonstration
+
+- mumax.github.io
+- web GUI
+- scripting
+- examples site
+- API site
+
+
+* mumax3-server
+
+- tool for managing small-medium GPU cluster
+- zero configuration
+- autodetects nodes on local net
+- built-in networking filesystem
+- web interface
+
